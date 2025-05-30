@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main_navigation"
+    app:startDestination="@id/mainFragment">
+
+    <fragment
+        android:id="@+id/mainFragment"
+        android:name="com.example.aplikasicapstonelaskarai.MainFragment"
+        android:label="Main Fragment">
+        <action
+            android:id="@+id/action_mainFragment_toAudioFragment"
+            app:destination="@id/audioFragment">
+            <argument
+                android:name="script"
+                app:argType="string"
+                app:nullable="true" />
+        </action>
+    </fragment>
+
+    <fragment
+        android:id="@+id/audioFragment"
+        android:name="com.example.aplikasicapstonelaskarai.AudioFragment"
+        android:label="Audio Fragment">
+        <action
+            android:id="@+id/action_audioFragment_to_feedbackActivity"
+            app:destination="@id/feedbackActivity" />
+    </fragment>
+
+    <activity
+        android:id="@+id/feedbackActivity"
+        android:name="com.example.aplikasicapstonelaskarai.FeedbackActivity"
+        android:label="Feedback Activity" />
+</navigation>
