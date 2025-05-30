@@ -45,7 +45,7 @@ class AudioFragment : Fragment() {
         }
 
         // Setup UI
-        binding.textviewscript.text = if (script.isNotEmpty()) script else "Tidak ada skrip tersedia"
+
 
         binding.buttonPlayPause.setOnClickListener {
             if (isPlaying) {

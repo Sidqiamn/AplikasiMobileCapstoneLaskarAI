@@ -2,4 +2,11 @@
     <string name="app_name">Terapi Psikologis</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="tell_your_feelings">Hai! Aku teman virtualmu yang siap menemani. Ceritakan sedikit tentang apa yang kamu rasakan hari ini ya</string>
+    <string name="send">Kirim</string>
+    <string name="ceritakan">Ceritakan disini!</string>
+    <string name="play_script">Putar terapi</string>
+    <string name="chat_bot">Chat Bot</string>
+    <string name="background_image">Background Image</string>
+
 </resources>

@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main_navigation"
-    app:startDestination="@id/mainFragment">
+    app:startDestination="@id/pembukaanFragment">
 
     <fragment
         android:id="@+id/mainFragment"
@@ -10,7 +11,8 @@
         android:label="Main Fragment">
         <action
             android:id="@+id/action_mainFragment_toAudioFragment"
-            app:destination="@id/audioFragment">
+            app:destination="@id/audioFragment"
+            app:launchSingleTop="true">
             <argument
                 android:name="script"
                 app:argType="string"
@@ -24,11 +26,22 @@
         android:label="Audio Fragment">
         <action
             android:id="@+id/action_audioFragment_to_feedbackActivity"
-            app:destination="@id/feedbackActivity" />
+            app:destination="@id/feedbackActivity"
+            app:launchSingleTop="true" />
     </fragment>
 
     <activity
         android:id="@+id/feedbackActivity"
         android:name="com.example.aplikasicapstonelaskarai.FeedbackActivity"
         android:label="Feedback Activity" />
+    <fragment
+        android:id="@+id/pembukaanFragment"
+        android:name="com.example.aplikasicapstonelaskarai.PembukaanFragment"
+        android:label="fragment_pembukaan"
+        tools:layout="@layout/fragment_pembukaan" >
+        <action
+            android:id="@+id/action_pembukaanFragment_to_mainFragment"
+            app:destination="@id/mainFragment"
+            app:launchSingleTop="true" />
+    </fragment>
 </navigation>

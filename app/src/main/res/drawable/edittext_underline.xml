@@ -5,7 +5,7 @@
         </shape>
     </item>
 
-    <item android:bottom="0dp" android:top="50dp">
+    <item android:bottom="0dp" android:top="80dp">
 
         <shape android:shape="rectangle">
             <size android:height="1dp" /> <!-- Tebal garis -->
