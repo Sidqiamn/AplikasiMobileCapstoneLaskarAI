@@ -1,7 +1,7 @@
 package com.example.aplikasicapstonelaskarai
 
-import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,6 +14,8 @@ class AudioFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var ttsManager: TtsManager
     private var isPlaying = false
+    private var script: String = ""
+    private val TAG = "AudioFragment"
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -26,36 +28,42 @@ class AudioFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Ambil skrip langsung dari arguments
-        val script = arguments?.getString("script") ?: ""
+        script = arguments?.getString("script") ?: ""
+        Log.d(TAG, "Script received: $script")
+        if (script.isEmpty()) {
+            binding.textViewStatus.text = "Tidak ada skrip untuk diputar"
+        } else {
+            binding.textViewStatus.text = "Tekan tombol untuk memutar terapi"
+        }
 
-        // Inisialisasi TtsManager
         ttsManager = TtsManager(requireContext()) { success, errorMessage ->
             activity?.runOnUiThread {
-                if (success) {
-                    binding.textViewStatus.text = "Memutar terapi..."
-                    if (script.isNotEmpty()) {
-                        ttsManager.speak(script)
-                        isPlaying = true
-                    }
-                } else {
-                    binding.textViewStatus.text = errorMessage ?: "Gagal memutar audio"
+                if (!success) {
+                    binding.textViewStatus.text = errorMessage ?: "Gagal menginisialisasi audio"
+                    Log.e(TAG, "TtsManager initialization failed: $errorMessage")
                 }
             }
         }
 
-        // Setup UI
-
-
         binding.buttonPlayPause.setOnClickListener {
             if (isPlaying) {
                 ttsManager.stop()
-                binding.buttonPlayPause.text = "Putar"
+                binding.buttonPlayPause.setImageResource(R.drawable.play)
+                binding.textViewStatus.text = "Audio dihentikan. Tekan untuk memutar lagi."
                 isPlaying = false
             } else {
                 if (script.isNotEmpty()) {
-                    ttsManager.speak(script)
-                    binding.buttonPlayPause.text = "Jeda"
+                    Log.d(TAG, "Playing script: $script")
+                    ttsManager.speak(script) {
+                        // Callback saat audio selesai
+                        activity?.runOnUiThread {
+                            binding.buttonPlayPause.setImageResource(R.drawable.play)
+                            binding.textViewStatus.text = "Audio selesai. Tekan untuk memutar lagi."
+                            isPlaying = false
+                        }
+                    }
+                    binding.buttonPlayPause.setImageResource(R.drawable.stop)
+                    binding.textViewStatus.text = "Memutar terapi..."
                     isPlaying = true
                 } else {
                     binding.textViewStatus.text = "Tidak ada skrip untuk diputar"
@@ -63,15 +71,12 @@ class AudioFragment : Fragment() {
             }
         }
 
-        binding.buttonStop.setOnClickListener {
-            ttsManager.stop()
-            binding.buttonPlayPause.text = "Putar"
-            isPlaying = false
-        }
-
         binding.buttonFeedback.setOnClickListener {
             ttsManager.stop()
-            findNavController().navigate(R.id.action_audioFragment_to_feedbackActivity)
+            binding.buttonPlayPause.setImageResource(R.drawable.play)
+            isPlaying = false
+            binding.textViewStatus.text = "Audio dihentikan."
+            findNavController().navigate(R.id.action_audioFragment_to_feedbackFragment)
         }
     }
 

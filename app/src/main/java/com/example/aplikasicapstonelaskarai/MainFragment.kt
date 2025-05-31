@@ -16,6 +16,7 @@ import com.example.aplikasicapstonelaskarai.databinding.FragmentMainBinding
 import com.google.ai.client.generativeai.GenerativeModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -28,15 +29,25 @@ class MainFragment : Fragment() {
     private lateinit var chatAdapter: ChatAdapter
     private val messages = mutableListOf<ChatMessage>()
     private var currentScript: String? = null
-    private var initialEmotion: String? = null // Menyimpan emosi pertama
-    private var isFirstMessage: Boolean = true // Melacak apakah ini pesan pertama
+    private var initialEmotion: String? = null
+    private var isFirstMessage: Boolean = true
     private val TAG = "MainFragment"
+
+    // Tambahkan CoroutineScope dan Job untuk mengelola coroutine
+    private val fragmentScope = CoroutineScope(Dispatchers.Main)
+    private var geminiJob: Job? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentMainBinding.inflate(inflater, container, false)
+        // Reset data saat fragment dibuat ulang
+        messages.clear()
+        currentScript = null
+        initialEmotion = null
+        isFirstMessage = true
+        Log.d(TAG, "onCreateView: Data reset - messages cleared, isFirstMessage=$isFirstMessage")
         return binding.root
     }
 
@@ -107,6 +118,12 @@ class MainFragment : Fragment() {
                 binding.textViewError.text = "Tidak ada audio untuk diputar"
             }
         }
+
+        // Tombol info fragment
+        binding.infofragment.setOnClickListener {
+            val action = MainFragmentDirections.actionMainFragmentToInfoFragment()
+            findNavController().navigate(action)
+        }
     }
 
     private fun showInstallTtsButton() {
@@ -132,36 +149,35 @@ class MainFragment : Fragment() {
 
     private fun processUserMessage(inputText: String) {
         try {
-            // Prediksi emosi hanya pada pesan pertama
             if (isFirstMessage) {
                 val emotion = classifier.predict(inputText)
-                initialEmotion = emotion // Simpan emosi pertama
+                initialEmotion = emotion
                 Log.d(TAG, "Initial emotion predicted: $initialEmotion")
 
-                // Dapatkan skrip berdasarkan emosi (hanya sekali)
-                currentScript = scriptManager.getRandomScript(emotion)
-                Log.d(TAG, "Current script: $currentScript")
+                // Gunakan coroutine untuk memanggil getRandomScript
+                fragmentScope.launch {
+                    currentScript = scriptManager.getRandomScript(emotion)
+                    Log.d(TAG, "Current script retrieved: $currentScript")
 
-                if (currentScript != null && currentScript!!.isNotEmpty() && currentScript != "Maaf, skrip tidak tersedia untuk $emotion.") {
-                    binding.buttonPlayScript.isEnabled = true
-                    binding.buttonPlayScript.setBackgroundColor(android.graphics.Color.parseColor("#34C759"))
-                    binding.textViewError.text = "Audio terapi siap diputar"
-                    Log.d(TAG, "ButtonPlayScript enabled: true")
-                } else {
-                    binding.buttonPlayScript.isEnabled = false
-                    binding.buttonPlayScript.setBackgroundColor(android.graphics.Color.parseColor("#B0BEC5"))
-                    binding.textViewError.text = "Audio terapi tidak tersedia"
-                    Log.d(TAG, "ButtonPlayScript enabled: false")
+                    if (currentScript != null && currentScript!!.isNotEmpty() && currentScript != "Maaf, skrip tidak tersedia untuk $emotion.") {
+                        binding.buttonPlayScript.isEnabled = true
+                        binding.buttonPlayScript.setBackgroundColor(android.graphics.Color.parseColor("#34C759"))
+                        binding.textViewError.text = "Audio terapi siap diputar"
+                        Log.d(TAG, "ButtonPlayScript enabled: true")
+                    } else {
+                        binding.buttonPlayScript.isEnabled = false
+                        binding.buttonPlayScript.setBackgroundColor(android.graphics.Color.parseColor("#B0BEC5"))
+                        binding.textViewError.text = "Audio terapi tidak tersedia"
+                        Log.d(TAG, "ButtonPlayScript enabled: false")
+                    }
+
+                    isFirstMessage = false
                 }
-
-                isFirstMessage = false // Tandai bahwa pesan pertama sudah diproses
             }
 
-            // Panggil API Gemini untuk respons, gunakan emosi yang sudah disimpan
             if (initialEmotion != null) {
                 modelCall(inputText, initialEmotion!!)
             } else {
-                // Jika emosi belum diprediksi (kasus error), gunakan emosi default atau tangani error
                 modelCall(inputText, "neutral")
             }
         } catch (e: Exception) {
@@ -182,23 +198,43 @@ class MainFragment : Fragment() {
             apiKey = "AIzaSyDnMHce4Y1me6zjYpTys3HVnNz2hqCx6J8" // Ganti dengan kunci API Anda
         )
 
-        CoroutineScope(Dispatchers.IO).launch {
+        // Simpan job coroutine agar bisa dibatalkan
+        geminiJob = fragmentScope.launch(Dispatchers.IO) {
             try {
                 val response = generativeModel.generateContent(
                     "Bayangkan kamu adalah seorang teman yang peduli dan empatik. Berdasarkan emosi '$emotion' yang dirasakan pengguna, berikan satu respons yang sangat mendukung, relevan dengan konteks, dan penuh empati untuk: '$prompt'. Jangan memberikan opsi atau daftar respons, tetapi langsung berikan satu respons terbaik yang alami dan terasa seperti percakapan dengan teman dekat. Jika konteks tidak jelas, buat asumsi yang masuk akal berdasarkan emosi dan input pengguna, lalu tawarkan bantuan spesifik."
                 )
 
-                withContext(Dispatchers.Main) {
-                    binding.loadingProgressBar.visibility = View.GONE
-                    addMessage(response.text.toString(), false)
+                // Periksa apakah coroutine masih aktif sebelum beralih ke Main thread
+                if (geminiJob?.isActive == true) {
+                    withContext(Dispatchers.Main) {
+                        binding.loadingProgressBar.visibility = View.GONE
+                        addMessage(response.text.toString(), false)
+                    }
+                } else {
+                    Log.d(TAG, "Coroutine cancelled, skipping UI update")
                 }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    binding.loadingProgressBar.visibility = View.GONE
-                    addMessage("Error: ${e.message}", false)
+                // Periksa apakah coroutine masih aktif sebelum beralih ke Main thread
+                if (geminiJob?.isActive == true) {
+                    withContext(Dispatchers.Main) {
+                        binding.loadingProgressBar.visibility = View.GONE
+                        addMessage("Error: ${e.message}", false)
+                    }
+                } else {
+                    Log.d(TAG, "Coroutine cancelled, skipping error UI update")
                 }
             }
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Batalkan semua coroutine yang sedang berjalan saat fragment berhenti
+        geminiJob?.cancel()
+        geminiJob = null
+        binding.loadingProgressBar.visibility = View.GONE
+        Log.d(TAG, "onStop: Gemini job cancelled")
     }
 
     override fun onDestroyView() {
